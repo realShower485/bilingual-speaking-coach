@@ -1,0 +1,100 @@
+/* =====================================================================
+   全局样式 — Notion / Obsidian 风格
+   ===================================================================== */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans',
+    'Noto Sans JP', sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+
+  /* 色板:暖白底 + 深灰文字 + 蓝色强调 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f7f7f5;
+  --bg-tertiary: #f1f1ef;
+  --bg-hover: #ececea;
+  --bg-active: #e8e8e6;
+
+  --text-primary: #37352f;
+  --text-secondary: #787774;
+  --text-tertiary: #9b9a97;
+  --text-on-accent: #ffffff;
+
+  --border-light: #ececea;
+  --border-default: #e0e0de;
+  --border-strong: #d0d0ce;
+
+  --accent: #2383e2;
+  --accent-hover: #0b6bcb;
+  --accent-light: #e8f1fc;
+  --accent-bg: #f0f7ff;
+
+  --amber: #d97d0f;
+  --amber-light: #fff8e1;
+  --amber-bg: #fef3e2;
+
+  --rose: #d6453d;
+  --rose-light: #fef0f0;
+  --rose-bg: #fee9e7;
+
+  --emerald: #0f7d3a;
+  --emerald-light: #e8f5ee;
+  --emerald-bg: #f0faf4;
+
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--text-primary);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 滚动条:细线、半透明 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* AI 说话声波动画 */
+@keyframes ai-sound-wave {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.ai-sound-wave-bar {
+  transform-origin: center;
+  animation: ai-sound-wave 0.9s ease-in-out infinite;
+}
+.ai-sound-wave-bar:nth-child(2) { animation-delay: 0.15s; }
+.ai-sound-wave-bar:nth-child(3) { animation-delay: 0.3s; }
+.ai-sound-wave-bar:nth-child(4) { animation-delay: 0.45s; }
+
+/* 录音脉冲 */
+@keyframes rec-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(214, 69, 61, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(214, 69, 61, 0); }
+}
+.rec-pulse-dot {
+  animation: rec-pulse 1.4s ease-out infinite;
+}
+
+/* 淡入动画 */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* 长列表性能优化 */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 88px;
+}
