@@ -5,15 +5,16 @@ const SETTINGS_STORAGE_KEY = 'bilingual-speaking-coach:settings';
 
 const defaultSettings: AppSettings = {
   llmApiKey: '',
-  llmModel: '',
-  llmBaseUrl: '',
+  // SiliconFlow 可用同一个 Key 覆盖 LLM / STT / TTS，开箱即用。
+  llmModel: 'deepseek-ai/DeepSeek-V3.2',
+  llmBaseUrl: 'https://api.siliconflow.cn/v1',
   sttApiKey: '',
-  sttProvider: 'whisper',
+  sttProvider: 'siliconflow',
   sttLanguage: 'auto',
   sttBaseUrl: '',
   sttModel: '',
   ttsApiKey: '',
-  ttsProvider: 'azure',
+  ttsProvider: 'siliconflow',
   ttsBaseUrl: '',
   ttsModel: '',
   ttsVoice: '',
