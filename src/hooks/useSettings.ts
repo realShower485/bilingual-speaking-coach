@@ -16,7 +16,11 @@ export interface UseSettingsResult {
   isLoading: boolean;
   error: string | null;
   updateSettings: (patch: Partial<AppSettings>) => void;
-  saveSettings: () => void;
+  saveSettings: () => Promise<void>;
+  isSecretVaultInitialized: boolean;
+  isSecretsUnlocked: boolean;
+  hasLegacySecrets: boolean;
+  unlockSecrets: (password: string) => Promise<void>;
   /**
    * 测试当前 LLM API Key / 模型 / Base URL 是否可用。
    * 内部发送一条极简对话请求,根据响应状态判定。
@@ -34,6 +38,12 @@ export function useSettings(): UseSettingsResult {
   const updateSettings = useSettingsStore((s) => s.updateSettings);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const saveSettingsStore = useSettingsStore((s) => s.saveSettings);
+  const isSecretVaultInitialized = useSettingsStore(
+    (s) => s.isSecretVaultInitialized,
+  );
+  const isSecretsUnlocked = useSettingsStore((s) => s.isSecretsUnlocked);
+  const hasLegacySecrets = useSettingsStore((s) => s.hasLegacySecrets);
+  const unlockSecrets = useSettingsStore((s) => s.unlockSecrets);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +62,8 @@ export function useSettings(): UseSettingsResult {
     }
   }, [loadSettings]);
 
-  const saveSettings = useCallback(() => {
-    try {
-      saveSettingsStore();
-    } catch (e) {
-      setError((e as Error).message);
-    }
+  const saveSettings = useCallback(async () => {
+    await saveSettingsStore();
   }, [saveSettingsStore]);
 
   const testLLMConnection = useCallback(async (): Promise<boolean> => {
@@ -115,6 +121,10 @@ export function useSettings(): UseSettingsResult {
     error,
     updateSettings,
     saveSettings,
+    isSecretVaultInitialized,
+    isSecretsUnlocked,
+    hasLegacySecrets,
+    unlockSecrets,
     testLLMConnection,
     isTestingConnection,
     testConnectionMessage,

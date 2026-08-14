@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import { selectDatabaseFile } from '../services/fileDialog';
 import * as db from '../services/db';
+import { SecretVaultSection } from './SecretVaultSection';
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
@@ -96,13 +97,14 @@ export function SettingsPanel({ onClose }: Props) {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saveState === 'saving') return;
     setSaveState('saving');
     try {
-      saveSettings();
-    } catch {
+      await saveSettings();
+    } catch (error) {
       setSaveState('idle');
+      alert(`保存失败：${(error as Error).message}`);
       return;
     }
     // 短暂展示"已保存"反馈,然后关闭面板
@@ -132,11 +134,7 @@ export function SettingsPanel({ onClose }: Props) {
           </button>
         </div>
 
-        {/* 安全提示 */}
-        <div className="rounded-lg border border-[var(--amber)]/30 bg-[var(--amber-bg)] p-3 text-xs text-[var(--amber)]">
-          ⚠ API Key 等敏感信息将以明文存储于浏览器 localStorage(自用场景)。
-          请勿在共享设备上使用,后续版本将替换为 Tauri 文件系统加密存储。
-        </div>
+        <SecretVaultSection />
 
         {/* 硅基流动推荐提示 */}
         <div className="rounded-lg border border-[var(--emerald)]/30 bg-[var(--emerald-bg)] p-3 text-xs text-[var(--emerald)]">
@@ -550,7 +548,7 @@ export function SettingsPanel({ onClose }: Props) {
             取消
           </button>
           <button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={saveState !== 'idle'}
             className={`flex min-w-[88px] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed ${
               saveState === 'saved'
