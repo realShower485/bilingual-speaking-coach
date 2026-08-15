@@ -14,6 +14,7 @@ import { DifficultyNotice } from './DifficultyNotice';
 import { PhrasebookPanel } from './PhrasebookPanel';
 import { streamMetaDialog } from '../services/llm';
 import { textToStream } from '../services/streamingPipeline';
+import { VaultUnlockDialog } from './VaultUnlockDialog';
 
 interface Props {
   contextType: ContextType;
@@ -69,6 +70,10 @@ export function TrainingView({
   const languageOrder = useSettingsStore((s) => s.settings.targetLanguageOrder);
   const safeWord = useSettingsStore((s) => s.settings.safeWord);
   const llmApiKey = useSettingsStore((s) => s.settings.llmApiKey);
+  const isSecretVaultInitialized = useSettingsStore(
+    (s) => s.isSecretVaultInitialized,
+  );
+  const isSecretsUnlocked = useSettingsStore((s) => s.isSecretsUnlocked);
   const setActiveView = useUiStore((s) => s.setActiveView);
   const setError = useSessionStore((s) => s.setError);
   const togglePhrasebook = useUiStore((s) => s.togglePhrasebook);
@@ -97,6 +102,7 @@ export function TrainingView({
   const [metaInput, setMetaInput] = useState('');
   const [metaEntryMode, setMetaEntryMode] = useState(false);
   const [metaEntryText, setMetaEntryText] = useState('');
+  const [isVaultUnlockOpen, setVaultUnlockOpen] = useState(false);
   /** 语音模式:识别中状态(STT 进行时)。 */
   const [isTranscribing, setIsTranscribing] = useState(false);
   /** 已朗读过的 feedback id,避免重复朗读。 */
@@ -154,7 +160,7 @@ export function TrainingView({
     setMetaEntryText('');
   };
 
-  const handleStart = async () => {
+  const startSessionNow = async () => {
     clearLocalState();
     setError(null);
     const scenario =
@@ -173,6 +179,18 @@ export function TrainingView({
     } catch {
       /* error 已在 store 中 */
     }
+  };
+
+  const handleStart = () => {
+    if (!isSecretsUnlocked) {
+      if (isSecretVaultInitialized) {
+        setVaultUnlockOpen(true);
+      } else {
+        setActiveView('settings');
+      }
+      return;
+    }
+    void startSessionNow();
   };
 
   const handleSubmitInput = async (overrideText?: string) => {
@@ -554,12 +572,16 @@ export function TrainingView({
             </button>
           </div>
 
-          {/* 未配置 API Key 引导 */}
-          {!llmApiKey.trim() && (
+          {/* API Key / 保险库状态引导 */}
+          {!isSecretsUnlocked && isSecretVaultInitialized ? (
+            <div className="rounded-lg border border-[var(--amber)] opacity-40 bg-[var(--amber-bg)] px-4 py-3 text-xs text-[var(--amber)]">
+              ⚠ API Key 保险库尚未解锁。点击“开始练习”即可输入本机口令。
+            </div>
+          ) : !llmApiKey.trim() ? (
             <div className="flex flex-col items-center gap-2 rounded-lg border border-[var(--amber)] opacity-40 bg-[var(--amber-bg)] px-4 py-3 text-xs text-[var(--amber)]">
               <p className="flex items-center gap-1.5">
                 <span>⚠</span>
-                <span>尚未配置 LLM API Key,无法开始训练。</span>
+                <span>请先在设置中创建保险库并填写 LLM API Key。</span>
               </p>
               <button
                 onClick={() => setActiveView('settings')}
@@ -568,8 +590,17 @@ export function TrainingView({
                 前往设置 →
               </button>
             </div>
-          )}
+          ) : null}
         </div>
+        {isVaultUnlockOpen && (
+          <VaultUnlockDialog
+            onClose={() => setVaultUnlockOpen(false)}
+            onUnlocked={() => {
+              setVaultUnlockOpen(false);
+              void startSessionNow();
+            }}
+          />
+        )}
       </div>
     );
   }

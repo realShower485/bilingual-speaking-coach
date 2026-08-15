@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import type { ContextType, ScenarioItem, Session, TopicItem, Turn } from '../types';
 import { useHistory } from '../hooks/useHistory';
+import { LearningStats } from './LearningStats';
 import { getAllScenarios, getAllTopics } from '../services/contextManager';
 import * as db from '../services/db';
 
@@ -247,6 +248,8 @@ export function HistoryPanel({ onBack }: Props) {
             )}
           </div>
         </div>
+
+        <LearningStats sessions={sessions} />
 
         {/* 错误提示 */}
         {error && (

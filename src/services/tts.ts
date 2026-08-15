@@ -47,6 +47,7 @@ class OpenAITTSProvider implements TTSProvider {
 
   constructor(
     private readonly apiKey: string,
+    private readonly rate: number = 1,
     private readonly baseUrl: string = OPENAI_TTS_ENDPOINT,
     private readonly model: string = 'tts-1',
     /** 自定义音色;留空则按语言使用默认音色。硅基流动等可传特定音色 ID。 */
@@ -76,7 +77,7 @@ class OpenAITTSProvider implements TTSProvider {
         input: text,
         voice,
         response_format: 'mp3',
-        speed: 1.0,
+        speed: this.rate,
       }),
     });
 
@@ -143,19 +144,28 @@ export function createTTSProvider(settings: AppSettings): TTSProvider {
         ? settings.ttsVoice
         : undefined;
       return new OpenAITTSProvider(
-        apiKey, baseUrl, model,
+        apiKey,
+        normalizeTtsRate(settings.ttsRate),
+        baseUrl,
+        model,
         voice,
         SILICONFLOW_VOICE_BY_LANG,
       );
     }
     case 'openai':
-      return new OpenAITTSProvider(apiKey);
+      return new OpenAITTSProvider(apiKey, normalizeTtsRate(settings.ttsRate));
     case 'azure':
       return new AzureTTSProvider(apiKey);
     default:
       // 兜底:使用 openai
-      return new OpenAITTSProvider(apiKey);
+      return new OpenAITTSProvider(apiKey, normalizeTtsRate(settings.ttsRate));
   }
+}
+
+/** 将用户设置限制在各服务商共同支持的安全语速范围内。 */
+function normalizeTtsRate(rate: number | undefined): number {
+  if (!Number.isFinite(rate)) return 1;
+  return Math.min(2, Math.max(0.5, rate as number));
 }
 
 // =====================================================================

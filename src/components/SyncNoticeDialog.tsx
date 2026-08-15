@@ -7,8 +7,8 @@ interface Props {
   lastKnownTime: number | null;
   /** 用户选择"加载最新":重新初始化数据库连接以读取最新数据。 */
   onLoadLatest: () => void;
-  /** 用户选择"使用本地缓存":忽略外部修改,继续使用当前内存数据。 */
-  onUseCache: () => void;
+  /** 用户选择暂不重新打开数据库，确认当前状态并继续。 */
+  onContinue: () => void;
 }
 
 function formatTime(ts: number | null): string {
@@ -28,16 +28,16 @@ export function SyncNoticeDialog({
   currentTime,
   lastKnownTime,
   onLoadLatest,
-  onUseCache,
+  onContinue,
 }: Props) {
-  // ESC 键等同于"使用本地缓存"
+  // ESC 键等同于“暂不重新打开”
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onUseCache();
+      if (e.key === 'Escape') onContinue();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onUseCache]);
+  }, [onContinue]);
 
   return (
     <div
@@ -55,8 +55,7 @@ export function SyncNoticeDialog({
           检测到外部更新
         </h2>
         <p className="mb-4 text-sm text-[var(--text-secondary)]">
-          数据库在外部被更新,可能是另一台电脑通过同步盘(WebDAV / iCloud /
-          OneDrive)写入了新数据。是否加载最新数据?
+          检测到数据库可能被同步软件或另一台设备改动。SQLite 不能安全地处理并发云盘同步；请确认所有其他设备都已完全退出本应用，再重新打开数据库。
         </p>
         <dl className="mb-5 space-y-1 rounded-lg bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
           <div className="flex justify-between gap-2">
@@ -74,17 +73,17 @@ export function SyncNoticeDialog({
         </dl>
         <div className="flex justify-end gap-3">
           <button
-            onClick={onUseCache}
+            onClick={onContinue}
             className="rounded-lg border-[var(--border-default)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)]"
           >
-            使用本地缓存
+            暂不重新打开
           </button>
           <button
             onClick={onLoadLatest}
             autoFocus
             className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-hover)]"
           >
-            加载最新
+            重新打开数据库
           </button>
         </div>
       </div>

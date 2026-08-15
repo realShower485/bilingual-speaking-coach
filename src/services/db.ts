@@ -97,6 +97,8 @@ interface CustomTopicRow {
   created_at: number;
 }
 
+type PublicSettings = Omit<AppSettings, 'llmApiKey' | 'sttApiKey' | 'ttsApiKey'>;
+
 // ===== 初始化 / 连接管理 =====
 
 /**
@@ -387,6 +389,29 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
+/** API Key 只允许存在于 Stronghold；SQLite 设置记录始终只保存非敏感字段。 */
+function toPublicSettings(settings: AppSettings): PublicSettings {
+  const { llmApiKey: _llmApiKey, sttApiKey: _sttApiKey, ttsApiKey: _ttsApiKey, ...publicSettings } =
+    settings;
+  return publicSettings;
+}
+
+/** 清理旧版 settings_json 中的明文 API Key；无敏感字段时返回 null。 */
+function sanitizeSettingsJson(settingsJson: string): string | null {
+  try {
+    const parsed = JSON.parse(settingsJson) as Record<string, unknown>;
+    const hadSecret =
+      'llmApiKey' in parsed || 'sttApiKey' in parsed || 'ttsApiKey' in parsed;
+    if (!hadSecret) return null;
+    delete parsed.llmApiKey;
+    delete parsed.sttApiKey;
+    delete parsed.ttsApiKey;
+    return JSON.stringify(parsed);
+  } catch {
+    return null;
+  }
+}
+
 /** 更新数据库最后修改时间(用于跨电脑同步检测)。 */
 async function markModified(): Promise<void> {
   const database = await getDb();
@@ -663,23 +688,43 @@ export async function deleteCustomTopic(id: string): Promise<void> {
 
 // ===== Settings =====
 
+/** 保存普通设置；API Key 始终由 Stronghold 管理，绝不写入 SQLite。 */
 export async function saveSettings(settings: AppSettings): Promise<void> {
   const database = await getDb();
   await database.execute(
     `INSERT INTO settings (id, settings_json) VALUES (1, $1)
      ON CONFLICT(id) DO UPDATE SET settings_json = excluded.settings_json`,
-    [JSON.stringify(settings)],
+    [JSON.stringify(toPublicSettings(settings))],
   );
   await markModified();
 }
 
+/** 读取普通设置，并主动忽略旧数据库记录中的 API Key。 */
 export async function loadSettings(): Promise<AppSettings | null> {
   const database = await getDb();
   const rows = await database.select<SettingsRow[]>(
     'SELECT * FROM settings WHERE id = 1',
   );
   if (rows.length === 0) return null;
-  return JSON.parse(rows[0].settings_json) as AppSettings;
+  const parsed = JSON.parse(rows[0].settings_json) as Omit<AppSettings, 'llmApiKey' | 'sttApiKey' | 'ttsApiKey'>;
+  return { ...parsed, llmApiKey: '', sttApiKey: '', ttsApiKey: '' };
+}
+
+/** 在用户成功保存 Stronghold 后，移除旧数据库设置记录中的明文 API Key。 */
+export async function removePersistedApiKeys(): Promise<void> {
+  const database = await getDb();
+  const rows = await database.select<SettingsRow[]>(
+    'SELECT * FROM settings WHERE id = 1',
+  );
+  if (rows.length === 0) return;
+
+  const sanitized = sanitizeSettingsJson(rows[0].settings_json);
+  if (!sanitized) return;
+
+  await database.execute('UPDATE settings SET settings_json = $1 WHERE id = 1', [
+    sanitized,
+  ]);
+  await markModified();
 }
 
 // ===== 数据库维护 =====
@@ -774,7 +819,7 @@ export async function migrateDbPath(newPath: string): Promise<void> {
   for (const r of settingsRows) {
     await newDb.execute(
       'INSERT INTO settings (id, settings_json) VALUES ($1, $2)',
-      [r.id, r.settings_json],
+      [r.id, sanitizeSettingsJson(r.settings_json) ?? r.settings_json],
     );
   }
   for (const r of metaRows) {

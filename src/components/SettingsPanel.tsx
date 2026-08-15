@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import { selectDatabaseFile } from '../services/fileDialog';
 import * as db from '../services/db';
+import { SecretVaultSection } from './SecretVaultSection';
+import { CustomContextManager } from './CustomContextManager';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
@@ -88,21 +91,28 @@ export function SettingsPanel({ onClose }: Props) {
     }
   };
 
-  const handleShowInFileManager = () => {
-    // 占位:需 Tauri shell / opener 插件
-    alert(
-      '「在文件管理器中显示」需要 Tauri shell 插件支持,暂未实现。\n当前路径:' +
-        (db.getCurrentDbPath() ?? settings.dbPath ?? '(未设置)'),
-    );
+  const handleShowInFileManager = async () => {
+    const path = db.getCurrentDbPath() ?? settings.dbPath.trim();
+    if (!path) {
+      setMigrationError('当前没有可显示的数据库路径');
+      return;
+    }
+
+    try {
+      await revealItemInDir(path);
+    } catch (error) {
+      setMigrationError(`无法在文件管理器中显示：${(error as Error).message}`);
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saveState === 'saving') return;
     setSaveState('saving');
     try {
-      saveSettings();
-    } catch {
+      await saveSettings();
+    } catch (error) {
       setSaveState('idle');
+      alert(`保存失败：${(error as Error).message}`);
       return;
     }
     // 短暂展示"已保存"反馈,然后关闭面板
@@ -132,11 +142,7 @@ export function SettingsPanel({ onClose }: Props) {
           </button>
         </div>
 
-        {/* 安全提示 */}
-        <div className="rounded-lg border border-[var(--amber)]/30 bg-[var(--amber-bg)] p-3 text-xs text-[var(--amber)]">
-          ⚠ API Key 等敏感信息将以明文存储于浏览器 localStorage(自用场景)。
-          请勿在共享设备上使用,后续版本将替换为 Tauri 文件系统加密存储。
-        </div>
+        <SecretVaultSection />
 
         {/* 硅基流动推荐提示 */}
         <div className="rounded-lg border border-[var(--emerald)]/30 bg-[var(--emerald-bg)] p-3 text-xs text-[var(--emerald)]">
@@ -246,17 +252,13 @@ export function SettingsPanel({ onClose }: Props) {
               value={settings.sttProvider}
               onChange={(e) =>
                 updateSettings({
-                  sttProvider: e.target.value as
-                    | 'whisper'
-                    | 'azure'
-                    | 'siliconflow',
+                  sttProvider: e.target.value as 'whisper' | 'siliconflow',
                 })
               }
               className={inputClass}
             >
               <option value="whisper">Whisper(OpenAI 兼容)</option>
               <option value="siliconflow">硅基流动 SiliconFlow</option>
-              <option value="azure">Azure Speech</option>
             </select>
           </label>
           <label className="block">
@@ -334,17 +336,13 @@ export function SettingsPanel({ onClose }: Props) {
               value={settings.ttsProvider}
               onChange={(e) =>
                 updateSettings({
-                  ttsProvider: e.target.value as
-                    | 'azure'
-                    | 'openai'
-                    | 'siliconflow',
+                  ttsProvider: e.target.value as 'openai' | 'siliconflow',
                 })
               }
               className={inputClass}
             >
               <option value="openai">OpenAI TTS</option>
               <option value="siliconflow">硅基流动 SiliconFlow</option>
-              <option value="azure">Azure Speech</option>
             </select>
           </label>
           <label className="block">
@@ -472,9 +470,11 @@ export function SettingsPanel({ onClose }: Props) {
           </label>
         </section>
 
+        <CustomContextManager />
+
         {/* 数据设置 */}
         <section className={sectionClass}>
-          <h3 className={headingClass}>数据 / 跨电脑同步</h3>
+          <h3 className={headingClass}>数据迁移与备份</h3>
           <label className="block">
             <span className={labelClass}>
               数据库路径(留空使用默认路径)
@@ -497,9 +497,12 @@ export function SettingsPanel({ onClose }: Props) {
             </div>
           </label>
 
+          <div className="rounded-lg border border-[var(--amber)]/30 bg-[var(--amber-bg)] p-3 text-xs text-[var(--text-secondary)]">
+            <p className="font-medium text-[var(--amber)]">不要把正在使用的 SQLite 文件当作实时同步文件。</p>
+            <p className="mt-1">SQLite 不支持云盘的并发写入或自动合并。若需要在多台电脑间转移数据，请先在所有设备完全退出本应用，等待同步完成后，再只在一台设备上打开；否则可能造成数据丢失或数据库损坏。</p>
+          </div>
           <p className="text-xs text-[var(--text-tertiary)]">
-            💡 将数据库文件放置在 WebDAV / iCloud / OneDrive 等同步目录中,
-            即可在多台电脑间共享训练数据。首次更改路径后请点击「迁移数据」按钮。
+            选择新位置后点击「迁移数据到新路径」。旧数据库不会被自动删除，可作为可恢复的备份。
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -513,9 +516,9 @@ export function SettingsPanel({ onClose }: Props) {
             </button>
             <button
               type="button"
-              onClick={handleShowInFileManager}
+              onClick={() => void handleShowInFileManager()}
               className="rounded-lg border border-[var(--border-default)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)]"
-              title="需要 Tauri shell 插件"
+              title="在系统文件管理器中定位当前数据库"
             >
               在文件管理器中显示
             </button>
@@ -550,7 +553,7 @@ export function SettingsPanel({ onClose }: Props) {
             取消
           </button>
           <button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={saveState !== 'idle'}
             className={`flex min-w-[88px] items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed ${
               saveState === 'saved'
