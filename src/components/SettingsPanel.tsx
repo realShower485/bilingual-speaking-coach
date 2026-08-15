@@ -3,6 +3,7 @@ import { useSettings } from '../hooks/useSettings';
 import { selectDatabaseFile } from '../services/fileDialog';
 import * as db from '../services/db';
 import { SecretVaultSection } from './SecretVaultSection';
+import { CustomContextManager } from './CustomContextManager';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 type SaveState = 'idle' | 'saving' | 'saved';
@@ -468,6 +469,8 @@ export function SettingsPanel({ onClose }: Props) {
             </select>
           </label>
         </section>
+
+        <CustomContextManager />
 
         {/* 数据设置 */}
         <section className={sectionClass}>
