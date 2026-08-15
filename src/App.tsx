@@ -90,8 +90,8 @@ function App() {
     }
   };
 
-  /** 用户选择"使用本地缓存":忽略外部修改,记录当前时间为已知时间。 */
-  const handleUseCache = async () => {
+  /** 用户选择“暂不重新打开”:确认当前数据库状态并继续。 */
+  const handleContinue = async () => {
     await recordDbTime();
     setSyncNotice(null);
   };
@@ -172,7 +172,7 @@ function App() {
           currentTime={syncNotice.currentTime}
           lastKnownTime={syncNotice.lastKnownTime}
           onLoadLatest={() => void handleLoadLatest()}
-          onUseCache={() => void handleUseCache()}
+          onContinue={() => void handleContinue()}
         />
       )}
     </div>
