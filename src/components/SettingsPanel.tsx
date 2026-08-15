@@ -3,6 +3,7 @@ import { useSettings } from '../hooks/useSettings';
 import { selectDatabaseFile } from '../services/fileDialog';
 import * as db from '../services/db';
 import { SecretVaultSection } from './SecretVaultSection';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
@@ -89,12 +90,18 @@ export function SettingsPanel({ onClose }: Props) {
     }
   };
 
-  const handleShowInFileManager = () => {
-    // 占位:需 Tauri shell / opener 插件
-    alert(
-      '「在文件管理器中显示」需要 Tauri shell 插件支持,暂未实现。\n当前路径:' +
-        (db.getCurrentDbPath() ?? settings.dbPath ?? '(未设置)'),
-    );
+  const handleShowInFileManager = async () => {
+    const path = db.getCurrentDbPath() ?? settings.dbPath.trim();
+    if (!path) {
+      setMigrationError('当前没有可显示的数据库路径');
+      return;
+    }
+
+    try {
+      await revealItemInDir(path);
+    } catch (error) {
+      setMigrationError(`无法在文件管理器中显示：${(error as Error).message}`);
+    }
   };
 
   const handleSave = async () => {
@@ -244,17 +251,13 @@ export function SettingsPanel({ onClose }: Props) {
               value={settings.sttProvider}
               onChange={(e) =>
                 updateSettings({
-                  sttProvider: e.target.value as
-                    | 'whisper'
-                    | 'azure'
-                    | 'siliconflow',
+                  sttProvider: e.target.value as 'whisper' | 'siliconflow',
                 })
               }
               className={inputClass}
             >
               <option value="whisper">Whisper(OpenAI 兼容)</option>
               <option value="siliconflow">硅基流动 SiliconFlow</option>
-              <option value="azure">Azure Speech</option>
             </select>
           </label>
           <label className="block">
@@ -332,17 +335,13 @@ export function SettingsPanel({ onClose }: Props) {
               value={settings.ttsProvider}
               onChange={(e) =>
                 updateSettings({
-                  ttsProvider: e.target.value as
-                    | 'azure'
-                    | 'openai'
-                    | 'siliconflow',
+                  ttsProvider: e.target.value as 'openai' | 'siliconflow',
                 })
               }
               className={inputClass}
             >
               <option value="openai">OpenAI TTS</option>
               <option value="siliconflow">硅基流动 SiliconFlow</option>
-              <option value="azure">Azure Speech</option>
             </select>
           </label>
           <label className="block">
@@ -511,9 +510,9 @@ export function SettingsPanel({ onClose }: Props) {
             </button>
             <button
               type="button"
-              onClick={handleShowInFileManager}
+              onClick={() => void handleShowInFileManager()}
               className="rounded-lg border border-[var(--border-default)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)]"
-              title="需要 Tauri shell 插件"
+              title="在系统文件管理器中定位当前数据库"
             >
               在文件管理器中显示
             </button>

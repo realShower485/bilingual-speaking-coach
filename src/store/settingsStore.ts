@@ -69,7 +69,15 @@ function readFromStorage(): StoredSettings {
     }
 
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    const settings = { ...defaultSettings, ...parsed };
+    // Azure 语音尚未接入；旧版本选择 Azure 的用户自动回退到可用的默认服务。
+    const settings = {
+      ...defaultSettings,
+      ...parsed,
+      sttProvider:
+        parsed.sttProvider === 'azure' ? 'siliconflow' : parsed.sttProvider ?? defaultSettings.sttProvider,
+      ttsProvider:
+        parsed.ttsProvider === 'azure' ? 'siliconflow' : parsed.ttsProvider ?? defaultSettings.ttsProvider,
+    };
     const hasLegacySecrets = API_KEY_FIELDS.some((field) => Boolean(parsed[field]));
 
     return { settings, hasLegacySecrets };
