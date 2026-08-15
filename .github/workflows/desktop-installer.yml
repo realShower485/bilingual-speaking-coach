@@ -24,13 +24,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri installer
-        run: npm run tauri build
+      # 使用 NSIS .exe 安装包；GitHub Windows 环境中的 WiX/MSI 打包曾失败。
+      - name: Build NSIS installer
+        run: npm run tauri build -- --bundles nsis
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: bilingual-speaking-coach-windows
+          name: bilingual-speaking-coach-windows-nsis
           path: src-tauri/target/release/bundle/**
           if-no-files-found: error
           retention-days: 14
