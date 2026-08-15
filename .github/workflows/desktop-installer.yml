@@ -2,11 +2,6 @@ name: Build desktop installer
 
 on:
   workflow_dispatch:
-  # 仅本次修复时自动触发；构建完成后会移除，避免每次提交都打包。
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/desktop-installer.yml"
 
 permissions:
   contents: read
