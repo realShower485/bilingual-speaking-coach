@@ -16,9 +16,6 @@
       "identifier": "http:allow-fetch",
       "allow": [
         {
-          "url": "http://**"
-        },
-        {
           "url": "https://**"
         }
       ]
