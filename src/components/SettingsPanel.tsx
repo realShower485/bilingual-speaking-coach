@@ -474,7 +474,7 @@ export function SettingsPanel({ onClose }: Props) {
 
         {/* 数据设置 */}
         <section className={sectionClass}>
-          <h3 className={headingClass}>数据 / 跨电脑同步</h3>
+          <h3 className={headingClass}>数据迁移与备份</h3>
           <label className="block">
             <span className={labelClass}>
               数据库路径(留空使用默认路径)
@@ -497,9 +497,12 @@ export function SettingsPanel({ onClose }: Props) {
             </div>
           </label>
 
+          <div className="rounded-lg border border-[var(--amber)]/30 bg-[var(--amber-bg)] p-3 text-xs text-[var(--text-secondary)]">
+            <p className="font-medium text-[var(--amber)]">不要把正在使用的 SQLite 文件当作实时同步文件。</p>
+            <p className="mt-1">SQLite 不支持云盘的并发写入或自动合并。若需要在多台电脑间转移数据，请先在所有设备完全退出本应用，等待同步完成后，再只在一台设备上打开；否则可能造成数据丢失或数据库损坏。</p>
+          </div>
           <p className="text-xs text-[var(--text-tertiary)]">
-            💡 将数据库文件放置在 WebDAV / iCloud / OneDrive 等同步目录中,
-            即可在多台电脑间共享训练数据。首次更改路径后请点击「迁移数据」按钮。
+            选择新位置后点击「迁移数据到新路径」。旧数据库不会被自动删除，可作为可恢复的备份。
           </p>
 
           <div className="flex flex-wrap gap-2">
