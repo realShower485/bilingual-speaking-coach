@@ -25,3 +25,15 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  native-check:
+    name: Tauri native check (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Rust desktop layer
+        run: cargo check --locked
