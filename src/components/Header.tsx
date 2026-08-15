@@ -74,14 +74,16 @@ export function Header({
 
   useEffect(() => {
     let active = true;
-    getAllScenarios().then((s) => { if (active) setScenarios(s); }).catch(() => {});
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    getAllTopics().then((t) => { if (active) setTopics(t); }).catch(() => {});
-    return () => { active = false; };
+    const load = () => {
+      getAllScenarios().then((items) => { if (active) setScenarios(items); }).catch(() => {});
+      getAllTopics().then((items) => { if (active) setTopics(items); }).catch(() => {});
+    };
+    load();
+    window.addEventListener('context-library-updated', load);
+    return () => {
+      active = false;
+      window.removeEventListener('context-library-updated', load);
+    };
   }, []);
 
   const englishDifficulties = getEnglishDifficulties();
