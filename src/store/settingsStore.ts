@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../types';
+import { removePersistedApiKeys } from '../services/db';
 import {
   isSecretVaultInitialized,
   isSecretVaultUnlocked,
@@ -136,6 +137,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
 
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(publicSettings));
+    await removePersistedApiKeys();
     set({
       hasLegacySecrets: false,
       isSecretVaultInitialized: isSecretVaultInitialized(),
