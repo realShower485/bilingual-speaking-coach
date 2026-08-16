@@ -29,6 +29,7 @@ import {
 import {
   speakText,
   stopSpeaking as stopSpeakingTts,
+  type SpeechLanguage,
 } from '../services/tts';
 import { interruptionManager } from '../services/interruptionManager';
 import { StreamingTTSPipeline } from '../services/streamingPipeline';
@@ -209,7 +210,7 @@ export function useVoiceMode() {
   const speak = useCallback(
     async (
       text: string,
-      language: 'en' | 'ja',
+      language: SpeechLanguage,
       options?: {
         enableInterrupt?: boolean;
         onInterrupt?: () => void;
