@@ -21,6 +21,7 @@ import {
   requestHint,
   startNewSession,
   startNewTurn,
+  startPostFeedbackReview,
   submitEnglishInput,
   submitJapaneseInput,
 } from '../services/training';
@@ -70,6 +71,8 @@ export function useTraining() {
 
   const exitMeta = useCallback((): void => exitMetaDialog(), []);
 
+  const startPostFeedback = useCallback((): void => startPostFeedbackReview(), []);
+
   const endSession = useCallback((): Promise<void> => endCurrentSession(), []);
 
   const checkSafeWord = useCallback(
@@ -101,6 +104,7 @@ export function useTraining() {
     requestHint: requestHintAction,
     enterMetaDialog: enterMeta,
     exitMetaDialog: exitMeta,
+    startPostFeedbackReview: startPostFeedback,
     endSession,
     checkSafeWord,
     checkResume,
