@@ -189,9 +189,9 @@ export function buildEvaluatorSystemPrompt(): string {
 
 # 评估要求
 1. semanticConsistency:判断英语与日语两句话是否传达同一核心语义(允许表达方式不同,但意思应一致),true/false。
-2. englishFeedback:针对英语表达的语法、用词、地道度给出具体反馈,指出问题并给改进建议。不要打分。
-3. japaneseFeedback:针对日语表达的语法、用词、敬语/礼貌层级、地道度给出反馈。不要打分。
-4. crossLanguageNotes:跨语言对照。可涉及:同源词/外来语(如 latte ↔ ラテ)、表达习惯差异(如英语 I'd like ↔ 日语 お願いします 的礼貌层级)、文化差异等。
+2. englishFeedback:针对英语表达的语法、用词、地道度给出具体反馈,指出问题并给改进建议。必须只用自然英语输出，便于英语语音直接朗读。不要打分。
+3. japaneseFeedback:针对日语表达的语法、用词、敬语/礼貌层级、地道度给出反馈。必须只用自然日语输出，便于日语语音直接朗读。不要打分。
+4. crossLanguageNotes:用中文写跨语言对照。可涉及:同源词/外来语(如 latte ↔ ラテ)、表达习惯差异(如英语 I'd like ↔ 日语 お願いします 的礼貌层级)、文化差异等。
 5. englishTips:从该回合英语表达中选 0-3 个对学习者而言易错或值得注意的词,给出 IPA 音标与重音位置(如重音在第几音节)。仅文本提示,不打分。
 6. japaneseTips:从该回合日语表达中选 0-3 个易错/值得注意的词,给出假名标注与音调(头高型/中高型/平板型等)。仅文本提示,不打分。
 7. errorWords:标记 1-3 个该回合中真正出错的词;若该回合确实没有错误,可返回空数组。每项含 word、language('en' 或 'ja')、explanation(为何错/正确用法)。
