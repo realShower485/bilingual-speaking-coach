@@ -44,6 +44,12 @@ export interface Feedback {
   englishTips: PronunciationTip[]; // 英语发音小贴士
   japaneseTips: PronunciationTip[]; // 日语发音小贴士
   errorWords: ErrorWord[]; // 易错词
+  /** 评估后生成的自然、可直接复述的英语最优表达。 */
+  optimalEnglish?: string;
+  /** 评估后生成的自然、可直接复述的日语最优表达。 */
+  optimalJapanese?: string;
+  /** 本回合最佳表达的中文学习要点。 */
+  outcomeSummaryZh?: string;
 }
 
 // 训练回合
@@ -96,7 +102,12 @@ export interface AppSettings {
   ttsProvider: 'azure' | 'openai' | 'siliconflow';
   ttsBaseUrl?: string; // TTS API base URL(留空用默认)
   ttsModel?: string; // TTS 模型名(留空用默认 tts-1)
-  ttsVoice?: string; // 音色(OpenAI: alloy/echo/fable/onyx/nova/shimmer;硅基流动可填音色 ID 或留空)
+  /** @deprecated 旧版统一音色；保留用于兼容旧设置，不再作为各语言共同的发音人。 */
+  ttsVoice?: string;
+  /** 按语言分别设置音色；留空时使用推荐的不同默认音色。 */
+  ttsEnglishVoice?: string;
+  ttsJapaneseVoice?: string;
+  ttsChineseVoice?: string;
   ttsRate?: number; // TTS 语速(0.5 ~ 2.0,默认 1.0)
   dbPath: string; // SQLite 文件路径
   safeWord: string; // 安全词,默认"救命"
