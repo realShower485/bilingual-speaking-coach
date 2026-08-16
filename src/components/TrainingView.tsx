@@ -13,8 +13,8 @@ import { FeedbackCard } from './FeedbackCard';
 import { DifficultyNotice } from './DifficultyNotice';
 import { PhrasebookPanel } from './PhrasebookPanel';
 import { streamMetaDialog } from '../services/llm';
-import { textToStream } from '../services/streamingPipeline';
 import { VaultUnlockDialog } from './VaultUnlockDialog';
+import { OptimalOutcomeArchive } from './OptimalOutcomeArchive';
 
 interface Props {
   contextType: ContextType;
@@ -34,10 +34,9 @@ interface MetaMessage {
 /**
  * 主训练区:根据当前回合阶段(phase)显示不同内容。
  * - idle:开始练习按钮 + 说明
- * - awaiting_english / awaiting_japanese:情境、输入框、提交/提示/元对话按钮
- * - evaluating:加载状态
- * - feedback:反馈卡片 + 下一回合
- * - meta_dialog:元对话消息列表 + 输入 + 返回练习
+ * - awaiting_english / awaiting_japanese:情境、输入框、提交与提示
+ * - feedback:反馈卡片 → 复盘问答 → 最佳表达存档
+ * - meta_dialog:复盘问答或安全词触发的临时求助
  */
 export function TrainingView({
   contextType,
@@ -62,6 +61,7 @@ export function TrainingView({
     requestHint,
     enterMetaDialog,
     exitMetaDialog,
+    startPostFeedbackReview,
     checkSafeWord,
     checkResume,
     exitSafeMode,
@@ -100,8 +100,9 @@ export function TrainingView({
   const [hintText, setHintText] = useState('');
   const [metaMessages, setMetaMessages] = useState<MetaMessage[]>([]);
   const [metaInput, setMetaInput] = useState('');
-  const [metaEntryMode, setMetaEntryMode] = useState(false);
-  const [metaEntryText, setMetaEntryText] = useState('');
+  /** 只在反馈之后打开的复盘问答。 */
+  const [isPostFeedbackReview, setPostFeedbackReview] = useState(false);
+  const [showOutcomeArchive, setShowOutcomeArchive] = useState(false);
   const [isVaultUnlockOpen, setVaultUnlockOpen] = useState(false);
   /** 语音模式:识别中状态(STT 进行时)。 */
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -131,16 +132,13 @@ export function TrainingView({
     spokenFeedbackRef.current = currentTurn.id;
 
     const speakFeedback = async () => {
-      // 先朗读英语反馈,再朗读日语反馈
-      if (currentFeedback.englishFeedback) {
-        await speakStream(textToStream(currentFeedback.englishFeedback), 'en');
-      }
-      if (currentFeedback.japaneseFeedback) {
-        await speakStream(textToStream(currentFeedback.japaneseFeedback), 'ja');
-      }
+      // 每段完整朗读，避免逐句切碎造成的机械停顿；TTS 会按文字自动选择中/英/日声音。
+      if (currentFeedback.englishFeedback) await speak(currentFeedback.englishFeedback, 'en');
+      if (currentFeedback.japaneseFeedback) await speak(currentFeedback.japaneseFeedback, 'ja');
+      if (currentFeedback.crossLanguageNotes) await speak(currentFeedback.crossLanguageNotes, 'zh');
     };
     void speakFeedback();
-  }, [isVoiceMode, turnPhase, currentFeedback, currentTurn, speakStream]);
+  }, [isVoiceMode, turnPhase, currentFeedback, currentTurn, speak]);
 
   // 语音模式:回合切换时重置 spoken 标记
   useEffect(() => {
@@ -156,8 +154,8 @@ export function TrainingView({
     setHintText('');
     setMetaMessages([]);
     setMetaInput('');
-    setMetaEntryMode(false);
-    setMetaEntryText('');
+    setPostFeedbackReview(false);
+    setShowOutcomeArchive(false);
   };
 
   const startSessionNow = async () => {
@@ -214,7 +212,7 @@ export function TrainingView({
           },
         ]);
         // 语音模式:朗读 AI 元对话回应
-        if (isVoiceMode && !output.switchedToZh) {
+        if (isVoiceMode) {
           const targetLang: 'en' | 'ja' =
             turnPhase === 'awaiting_japanese' ? 'ja' : 'en';
           await speak(output.response, targetLang);
@@ -353,42 +351,6 @@ export function TrainingView({
     }
   };
 
-  const handleEnterMeta = async () => {
-    if (!metaEntryText.trim()) return;
-    const msg = metaEntryText.trim();
-    setMetaEntryText('');
-    setMetaEntryMode(false);
-    setMetaMessages([{ role: 'user', content: msg }]);
-
-    const hitSafeWord = checkSafeWord(msg, safeWord);
-    // 语音模式 + 非安全词 + 非安全模式:走流式管线
-    if (isVoiceMode && !hitSafeWord && !isSafeMode) {
-      await streamMetaDialogResponse(msg);
-      return;
-    }
-    // 批量后备(安全词 / 安全模式 / 非语音模式)
-    try {
-      const output = await enterMetaDialog(msg);
-      setMetaMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: output.response,
-          noteZh: output.noteZh || undefined,
-        },
-      ]);
-      // 语音模式:朗读 AI 元对话回应(中文响应不朗读)
-      if (isVoiceMode && !output.switchedToZh) {
-        const prev = useSessionStore.getState().previousPhase;
-        const targetLang: 'en' | 'ja' =
-          prev === 'awaiting_japanese' ? 'ja' : 'en';
-        await speak(output.response, targetLang);
-      }
-    } catch {
-      /* error 已在 store 中 */
-    }
-  };
-
   const handleSendMetaMessage = async (overrideText?: string) => {
     const msg = (overrideText ?? metaInput).trim();
     if (!msg) return;
@@ -421,7 +383,7 @@ export function TrainingView({
         },
       ]);
       // 语音模式:朗读 AI 元对话回应(中文响应不朗读)
-      if (isVoiceMode && !output.switchedToZh) {
+      if (isVoiceMode) {
         const prev = useSessionStore.getState().previousPhase;
         const targetLang: 'en' | 'ja' =
           prev === 'awaiting_japanese' ? 'ja' : 'en';
@@ -442,10 +404,26 @@ export function TrainingView({
     setPhrasebookOpen(false);
   };
 
+  const handleStartPostFeedbackReview = () => {
+    try {
+      setMetaMessages([]);
+      setMetaInput('');
+      setShowOutcomeArchive(false);
+      setPostFeedbackReview(true);
+      startPostFeedbackReview();
+    } catch {
+      setPostFeedbackReview(false);
+      /* error 已在 store 中 */
+    }
+  };
+
   const handleExitMeta = () => {
+    const completedReview = isPostFeedbackReview;
     exitMetaDialog();
     setMetaMessages([]);
     setMetaInput('');
+    setPostFeedbackReview(false);
+    if (completedReview) setShowOutcomeArchive(true);
   };
 
   const handleNextTurn = async () => {
@@ -663,14 +641,27 @@ export function TrainingView({
           {/* 反馈卡片 */}
           {currentFeedback && <FeedbackCard feedback={currentFeedback} />}
 
-          {/* 下一回合 */}
-          <button
-            onClick={handleNextTurn}
-            disabled={isProcessing}
-            className="w-full rounded-lg bg-[var(--accent)] py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-hover)] disabled:opacity-50"
-          >
-            {isProcessing ? '加载中…' : '下一回合 →'}
-          </button>
+          {/* 固定流程：反馈后先复盘，再展示并保存最佳表达。 */}
+          {showOutcomeArchive && currentFeedback ? (
+            <>
+              <OptimalOutcomeArchive feedback={currentFeedback} />
+              <button
+                onClick={handleNextTurn}
+                disabled={isProcessing}
+                className="w-full rounded-lg bg-[var(--accent)] py-3 text-sm font-medium text-white transition hover:bg-[var(--accent-hover)] disabled:opacity-50"
+              >
+                {isProcessing ? '加载中…' : '下一回合 →'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleStartPostFeedbackReview}
+              disabled={isProcessing || !currentFeedback}
+              className="w-full rounded-lg bg-[var(--amber)] py-3 text-sm font-medium text-white transition hover:brightness-95 disabled:opacity-50"
+            >
+              进入复盘问答 →
+            </button>
+          )}
         </div>
       </div>
     );
@@ -683,13 +674,13 @@ export function TrainingView({
       <div className="flex flex-1 flex-col bg-[var(--bg-primary)]">
         <div className="flex items-center justify-between border-b border-[var(--border-light)] px-4 py-2">
           <h3 className="text-sm font-semibold text-[var(--amber)]">
-            💬 元对话(可用中文询问 AI)
+{isPostFeedbackReview ? '💬 复盘问答（针对本回合反馈提问）' : '💬 临时求助'}
           </h3>
           <button
             onClick={handleExitMeta}
             className="rounded-lg border border-[var(--border-default)] px-3 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-tertiary)]"
           >
-            ← 返回练习
+{isPostFeedbackReview ? '完成复盘，查看最佳表达 →' : '← 返回练习'}
           </button>
         </div>
 
@@ -779,7 +770,9 @@ export function TrainingView({
                 ? '正在识别…'
                 : isSafeMode
                   ? '安全模式:用中文讨论,或输入"继续练习"恢复…'
-                  : '用中文询问语法、用词、表达方式…'
+                  : isPostFeedbackReview
+                    ? '请针对刚才的反馈追问：为什么这样说？还有更自然的说法吗？'
+                    : '用中文询问语法、用词、表达方式…'
             }
             className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
           />
@@ -885,43 +878,7 @@ export function TrainingView({
           </div>
         )}
 
-        {/* 元对话入口 */}
-        {metaEntryMode ? (
-          <div className="space-y-2 rounded-lg border border-[var(--amber)] opacity-40 bg-[var(--amber-bg)] p-4">
-            <label className="text-sm font-medium text-[var(--amber)]">
-              进入元对话 — 用中文向 AI 提问
-            </label>
-            <textarea
-              value={metaEntryText}
-              onChange={(e) => setMetaEntryText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  handleEnterMeta();
-                }
-              }}
-              placeholder="例如:这个词用英语怎么说?这个语法为什么这样用?"
-              rows={3}
-              className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-tertiary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--amber)]"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={handleEnterMeta}
-                disabled={isProcessing || !metaEntryText.trim()}
-                className="rounded-lg bg-[var(--amber)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--amber)] disabled:opacity-50"
-              >
-                发送并进入元对话
-              </button>
-              <button
-                onClick={() => setMetaEntryMode(false)}
-                className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-tertiary)]"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        ) : isVoiceMode ? (
+        {isVoiceMode ? (
           /* 语音输入模式 */
           <div className="space-y-3">
             <label className="block text-sm font-medium text-[var(--text-secondary)]">
@@ -1071,13 +1028,6 @@ export function TrainingView({
                 💡 请求提示
               </button>
               <button
-                onClick={() => setMetaEntryMode(true)}
-                disabled={isProcessing || isRecording || isAiSpeaking}
-                className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-tertiary)] disabled:opacity-50"
-              >
-                💬 进入元对话
-              </button>
-              <button
                 onClick={togglePhrasebook}
                 className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-tertiary)] disabled:opacity-50"
                 title="打开常用句手册 (Ctrl+P)"
@@ -1134,13 +1084,6 @@ export function TrainingView({
                 className="rounded-lg border border-[var(--amber)] opacity-50 px-4 py-2 text-sm text-[var(--amber)] transition hover:bg-[var(--amber-light)] disabled:opacity-50"
               >
                 💡 请求提示
-              </button>
-              <button
-                onClick={() => setMetaEntryMode(true)}
-                disabled={isProcessing}
-                className="rounded-lg border border-[var(--border-default)] px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-tertiary)] disabled:opacity-50"
-              >
-                💬 进入元对话
               </button>
               <button
                 onClick={togglePhrasebook}
