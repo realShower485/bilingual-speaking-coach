@@ -30,6 +30,9 @@ export interface EvaluatorOutput {
   crossLanguageNotes: string;
   englishTips: PronunciationTip[];
   japaneseTips: PronunciationTip[];
+  optimalEnglish?: string;
+  optimalJapanese?: string;
+  outcomeSummaryZh?: string;
   errorWords: Array<{
     word: string;
     language: 'en' | 'ja';
@@ -76,6 +79,9 @@ export function toFeedback(output: EvaluatorOutput, now: number = Date.now()): F
     englishTips: output.englishTips,
     japaneseTips: output.japaneseTips,
     errorWords,
+    optimalEnglish: output.optimalEnglish?.trim() || undefined,
+    optimalJapanese: output.optimalJapanese?.trim() || undefined,
+    outcomeSummaryZh: output.outcomeSummaryZh?.trim() || undefined,
   };
 }
 
@@ -189,6 +195,9 @@ export function buildEvaluatorSystemPrompt(): string {
 5. englishTips:从该回合英语表达中选 0-3 个对学习者而言易错或值得注意的词,给出 IPA 音标与重音位置(如重音在第几音节)。仅文本提示,不打分。
 6. japaneseTips:从该回合日语表达中选 0-3 个易错/值得注意的词,给出假名标注与音调(头高型/中高型/平板型等)。仅文本提示,不打分。
 7. errorWords:标记 1-3 个该回合中真正出错的词;若该回合确实没有错误,可返回空数组。每项含 word、language('en' 或 'ja')、explanation(为何错/正确用法)。
+8. optimalEnglish:给出与本回合情境完全对应、自然且适合当前英语难度的一句最佳英语表达。只输出英文句子，不要解释。
+9. optimalJapanese:给出与同一情境完全对应、自然且适合当前日语难度的一句最佳日语表达。只输出日语句子，不要解释。
+10. outcomeSummaryZh:用中文写 1-2 句总结，说明这两个最佳表达最值得记住的用法或差异。
 
 # 约束
 - 不要输出任何评分数字。
@@ -200,6 +209,9 @@ export function buildEvaluatorSystemPrompt(): string {
   "englishFeedback": "...",
   "japaneseFeedback": "...",
   "crossLanguageNotes": "...",
+  "optimalEnglish": "...",
+  "optimalJapanese": "...",
+  "outcomeSummaryZh": "...",
   "englishTips": [{"word":"...","ipa":"...","stress":"..."}],
   "japaneseTips": [{"word":"...","kana":"...","pitch":"..."}],
   "errorWords": [{"word":"...","language":"en","explanation":"..."}]
