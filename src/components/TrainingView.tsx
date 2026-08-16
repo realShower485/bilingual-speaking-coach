@@ -645,6 +645,24 @@ export function TrainingView({
           {showOutcomeArchive && currentFeedback ? (
             <>
               <OptimalOutcomeArchive feedback={currentFeedback} />
+              <div className="flex flex-wrap gap-2">
+                {currentFeedback.optimalEnglish && (
+                  <button
+                    onClick={() => void speak(currentFeedback.optimalEnglish!, 'en')}
+                    className="rounded-lg border border-[var(--accent)] px-3 py-2 text-sm text-[var(--accent)] transition hover:bg-[var(--accent-bg)]"
+                  >
+                    🔊 听英语示范
+                  </button>
+                )}
+                {currentFeedback.optimalJapanese && (
+                  <button
+                    onClick={() => void speak(currentFeedback.optimalJapanese!, 'ja')}
+                    className="rounded-lg border border-[var(--rose)] px-3 py-2 text-sm text-[var(--rose)] transition hover:bg-[var(--rose-light)]"
+                  >
+                    🔊 听日语示范
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handleNextTurn}
                 disabled={isProcessing}
