@@ -241,7 +241,7 @@ export function TrainingView({
       if (isVoiceMode && hint) {
         const lang: 'en' | 'ja' =
           turnPhase === 'awaiting_japanese' ? 'ja' : 'en';
-        await speakStream(textToStream(hint), lang);
+        await speak(hint, lang);
       }
     } catch {
       /* error 已在 store 中 */
