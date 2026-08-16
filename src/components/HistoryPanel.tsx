@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react';
 import type { ContextType, ScenarioItem, Session, TopicItem, Turn } from '../types';
 import { useHistory } from '../hooks/useHistory';
+import { OptimalOutcomeArchive } from './OptimalOutcomeArchive';
 import { LearningStats } from './LearningStats';
 import { getAllScenarios, getAllTopics } from '../services/contextManager';
 import * as db from '../services/db';
@@ -557,6 +558,7 @@ function SessionDetail({
                         {turn.feedback.japaneseFeedback}
                       </p>
                     )}
+                    <OptimalOutcomeArchive feedback={turn.feedback} compact />
                   </div>
                 ) : (
                   <p className="mt-3 border-t border-[var(--border-light)] pt-2 text-xs text-[var(--text-tertiary)]">
