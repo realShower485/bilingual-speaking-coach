@@ -365,22 +365,29 @@ export function SettingsPanel({ onClose }: Props) {
             </div>
           </label>
           {settings.ttsProvider === 'openai' && (
-            <label className="block">
-              <span className={labelClass}>
-                语音音色(OpenAI)
-              </span>
-              <select
-                value={settings.ttsVoice ?? 'alloy'}
-                onChange={(e) => updateSettings({ ttsVoice: e.target.value })}
-                className={inputClass}
-              >
-                {OPENAI_VOICE_OPTIONS.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <>
+              <p className="rounded-lg bg-[var(--emerald-bg)] p-2 text-xs text-[var(--emerald)]">
+                每种语言使用独立音色，避免中文、英语、日语混成同一个声音。
+              </p>
+              <label className="block">
+                <span className={labelClass}>英语音色</span>
+                <select value={settings.ttsEnglishVoice ?? 'onyx'} onChange={(e) => updateSettings({ ttsEnglishVoice: e.target.value })} className={inputClass}>
+                  {OPENAI_VOICE_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className={labelClass}>日语音色</span>
+                <select value={settings.ttsJapaneseVoice ?? 'nova'} onChange={(e) => updateSettings({ ttsJapaneseVoice: e.target.value })} className={inputClass}>
+                  {OPENAI_VOICE_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className={labelClass}>中文说明音色</span>
+                <select value={settings.ttsChineseVoice ?? 'shimmer'} onChange={(e) => updateSettings({ ttsChineseVoice: e.target.value })} className={inputClass}>
+                  {OPENAI_VOICE_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </label>
+            </>
           )}
           {settings.ttsProvider === 'siliconflow' && (
             <>
@@ -409,17 +416,29 @@ export function SettingsPanel({ onClose }: Props) {
                   placeholder="FunAudioLLM/CosyVoice2-0.5B"
                 />
               </label>
+              <p className="rounded-lg bg-[var(--accent-bg)] p-2 text-xs text-[var(--accent)]">
+                已按语言分配不同发音人，并以自然对话语气朗读；无需再填“统一音色 ID”。
+              </p>
               <label className="block">
-                <span className={labelClass}>
-                  音色 ID(可留空;如 FunAudioLLM/CosyVoice2-0.5B:alex)
-                </span>
-                <input
-                  type="text"
-                  value={settings.ttsVoice ?? ''}
-                  onChange={(e) => updateSettings({ ttsVoice: e.target.value })}
-                  className={inputClass}
-                  placeholder="留空使用默认音色"
-                />
+                <span className={labelClass}>英语音色</span>
+                <select value={settings.ttsEnglishVoice ?? 'FunAudioLLM/CosyVoice2-0.5B:alex'} onChange={(e) => updateSettings({ ttsEnglishVoice: e.target.value })} className={inputClass}>
+                  <option value="FunAudioLLM/CosyVoice2-0.5B:alex">Alex（推荐，英语）</option>
+                  <option value="FunAudioLLM/CosyVoice2-0.5B:benjamin">Benjamin</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className={labelClass}>日语音色</span>
+                <select value={settings.ttsJapaneseVoice ?? 'FunAudioLLM/CosyVoice2-0.5B:claire'} onChange={(e) => updateSettings({ ttsJapaneseVoice: e.target.value })} className={inputClass}>
+                  <option value="FunAudioLLM/CosyVoice2-0.5B:claire">Claire（推荐，日语）</option>
+                  <option value="FunAudioLLM/CosyVoice2-0.5B:anna">Anna</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className={labelClass}>中文说明音色</span>
+                <select value={settings.ttsChineseVoice ?? 'FunAudioLLM/CosyVoice2-0.5B:diana'} onChange={(e) => updateSettings({ ttsChineseVoice: e.target.value })} className={inputClass}>
+                  <option value="FunAudioLLM/CosyVoice2-0.5B:diana">Diana（推荐，中文）</option>
+                  <option value="FunAudioLLM/CosyVoice2-0.5B:charles">Charles</option>
+                </select>
               </label>
             </>
           )}
