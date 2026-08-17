@@ -133,6 +133,8 @@ export function buildConversationPartnerSystemPrompt(): string {
 5. 双语表达顺序由 languageOrder 决定(en-ja 先英后日,ja-en 先日后英),你应在 context 中提示用户先表达哪一种。
 6. 不要给出答案或示范句;若用户卡住,由系统另行请求 hint,不属于你的输出范围。
 7. 内容须适合一般学习者,避免敏感、政治、成人内容。
+8. 训练按每 3 回合组成一个完整小单元：第 1 节“进入话题”（建立人物、场景或立场）；第 2 节“展开内容”（补充原因、细节、例子或追问）；第 3 节“收束回应”（回应、总结、感谢、下一步或自然结束）。同一小单元必须围绕同一主题、人物关系和核心事实自然衔接，不能三回合各换一个话题。
+9. 每三个回合后自动开始新的小单元。必须根据用户提示提供的“小节位置”生成本回合；若有同单元的历史内容，延续其已出现的事实，不要改写或遗忘。
 
 # 难度体系(英语与日语独立)
 - 英语采用 CEFR:A2 → B1 → B2 → C1。
@@ -159,15 +161,25 @@ export function buildConversationPartnerUserPrompt(p: ConversationPartnerParams)
         ? `角色扮演:场景为「${p.scenario ?? '未指定'}」,你扮演该场景的 NPC。`
         : `主题讨论:主题为「${p.topic ?? '未指定'}」,围绕该主题提出需表达的观点或问题。`;
 
+  const completedCount = p.recentTurns?.length ?? 0;
+  const sectionIndex = (completedCount % 3) + 1;
+  const sectionGuide =
+    sectionIndex === 1
+      ? '第 1 节（进入话题）：建立本单元的场景、角色或立场，给后两节留下可延续的信息。'
+      : sectionIndex === 2
+        ? '第 2 节（展开内容）：必须延续同一单元第 1 节的事实，要求学习者补充原因、细节、例子或回应追问。'
+        : '第 3 节（收束回应）：必须延续前两节，要求学习者作回应、总结、感谢、下一步安排或自然结束。';
+
   const recentText =
     p.recentTurns && p.recentTurns.length > 0
       ? p.recentTurns
+          .slice(-3)
           .map(
             (t, i) =>
-              `第${i + 1}回合 EN: ${t.english} / JA: ${t.japanese}`,
+              `最近第${i + 1}回合 EN: ${t.english} / JA: ${t.japanese}`,
           )
           .join('\n')
-      : '这是第一回合,无历史。';
+      : '这是新单元的第一回合，无历史。';
 
   return `请给出下一回合的情境与待表达意思。
 
@@ -175,7 +187,8 @@ export function buildConversationPartnerUserPrompt(p: ConversationPartnerParams)
 英语表达难度:${p.englishDifficulty}(CEFR,auto 表示由你依据历史推断)
 日语表达难度:${p.japaneseDifficulty}(JLPT,auto 表示由你依据历史推断)
 表达顺序:${orderText}
-近期回合:
+当前三节单元的位置:${sectionGuide}
+最近回合:
 ${recentText}
 
 请按指定 JSON 格式输出。`;
