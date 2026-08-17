@@ -52,6 +52,37 @@ export interface Feedback {
   outcomeSummaryZh?: string;
 }
 
+// 可复用的三节双语材料；由独立材料生成器产出，不与逐回合反馈混在一起。
+export interface ReusableMaterialSection {
+  index: 1 | 2 | 3;
+  titleZh: string;
+  purposeZh: string;
+  chineseRoute: string;
+  english: string;
+  japanese: string;
+}
+
+export interface ReusableMaterialExpression {
+  meaningZh: string;
+  english: string;
+  japanese: string;
+  replaceablePart?: string;
+}
+
+export interface ReusableMaterial {
+  id: string;
+  createdAt: number;
+  sourceTurnIds: string[];
+  titleZh: string;
+  situationZh: string;
+  form: 'dialogue' | 'narration';
+  sections: ReusableMaterialSection[];
+  fullEnglish: string;
+  fullJapanese: string;
+  expressions: ReusableMaterialExpression[];
+  learnerNotesZh: string;
+}
+
 // 训练回合
 export interface Turn {
   id: string;
@@ -73,6 +104,8 @@ export interface Session {
   autoEnglishDifficulty: boolean; // 英语是否自动调整
   autoJapaneseDifficulty: boolean; // 日语是否自动调整
   scenario?: string; // 角色扮演场景或主题讨论主题
+  /** 由连续三回合整理出的复习材料，会随会话一同存档。 */
+  materials?: ReusableMaterial[];
   turns: Turn[];
   startedAt: number;
   endedAt?: number;
