@@ -23,6 +23,7 @@ import {
   startNewSession,
   startNewTurn,
   startPostFeedbackReview,
+  createCurrentSessionMaterial,
   submitEnglishInput,
   submitJapaneseInput,
 } from '../services/training';
