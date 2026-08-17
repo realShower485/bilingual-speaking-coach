@@ -462,7 +462,24 @@ export async function createCurrentSessionMaterial(): Promise<ReusableMaterial> 
         output.unsuitableReasonZh || '最近三回合不是同一条连续话题，无法忠实整理成复习材料。',
       );
     }
-    if (output.sections.length !== 3 || !output.fullEnglish.trim() || !output.fullJapanese.trim()) {
+    const hasCompleteSections =
+      output.sections.length === 3 &&
+      output.sections.every(
+        (section) =>
+          section.titleZh?.trim() &&
+          section.purposeZh?.trim() &&
+          section.chineseRoute?.trim() &&
+          section.english?.trim() &&
+          section.japanese?.trim(),
+      );
+    if (
+      !hasCompleteSections ||
+      !output.titleZh?.trim() ||
+      !output.situationZh?.trim() ||
+      !output.fullEnglish?.trim() ||
+      !output.fullJapanese?.trim() ||
+      !Array.isArray(output.expressions)
+    ) {
       throw new Error('材料生成不完整，请重新生成。');
     }
 
