@@ -17,11 +17,14 @@ import {
   buildEvaluatorUserPrompt,
   buildMetaDialogSystemPrompt,
   buildMetaDialogUserPrompt,
+  buildMaterialGenerationSystemPrompt,
+  buildMaterialGenerationUserPrompt,
   toFeedback,
   type ConversationPartnerOutput,
   type DifficultyAdjustmentOutput,
   type EvaluatorOutput,
   type MetaDialogOutput,
+  type MaterialGenerationOutput,
 } from './prompts';
 
 // =====================================================================
@@ -314,6 +317,27 @@ export async function evaluateTurn(params: {
     0.3,
   );
   return toFeedback(output);
+}
+
+/**
+ * 复习材料编辑：单独调用，避免让“逐回合评估”同时承担长材料写作。
+ * 只接受连续三回合；是否适合整理由模型明确返回。
+ */
+export async function generateReusableMaterial(params: {
+  contextType: ContextType;
+  scenario?: string;
+  englishDifficulty: EnglishDifficulty;
+  japaneseDifficulty: JapaneseDifficulty;
+  turns: Array<{ context: string; english: string; japanese: string }>;
+}): Promise<MaterialGenerationOutput> {
+  if (params.turns.length !== 3) {
+    throw new Error('生成复习材料需要恰好三回合已完成的双语表达。');
+  }
+  return callLLMJson<MaterialGenerationOutput>(
+    buildMaterialGenerationSystemPrompt(),
+    buildMaterialGenerationUserPrompt(params),
+    0.2,
+  );
 }
 
 /**
