@@ -11,7 +11,7 @@ export function ReusableMaterialCard({ material, onCopy, copyLabel = '复制到 
     <section className="space-y-4 rounded-lg border border-[var(--accent)] bg-[var(--accent-bg)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-[var(--accent)]">可复用复习材料</p>
+          <p className="text-xs font-medium text-[var(--accent)]">可复用复习材料 · AI 参考版本</p>
           <h3 className="mt-1 text-base font-semibold text-[var(--text-primary)]">{material.titleZh}</h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{material.situationZh}</p>
         </div>
@@ -64,10 +64,26 @@ export function ReusableMaterialCard({ material, onCopy, copyLabel = '复制到 
         </div>
       )}
 
+      {material.actualErrorNotesZh && material.actualErrorNotesZh.length > 0 && (
+        <div className="border-t border-[var(--border-light)] pt-3">
+          <p className="mb-1 text-xs font-semibold text-[var(--amber)]">本次实际易错点</p>
+          <ul className="space-y-1 text-xs text-[var(--text-secondary)]">
+            {material.actualErrorNotesZh.map((note, index) => <li key={index}>• {note}</li>)}
+          </ul>
+        </div>
+      )}
+
       {material.learnerNotesZh && (
         <p className="border-t border-[var(--border-light)] pt-3 text-sm text-[var(--text-secondary)]">
           <span className="font-medium text-[var(--accent)]">复习要点：</span>
           {material.learnerNotesZh}
+        </p>
+      )}
+
+      {material.transferScenarioZh && (
+        <p className="border-t border-[var(--border-light)] pt-3 text-sm text-[var(--text-secondary)]">
+          <span className="font-medium text-[var(--emerald)]">相似迁移情境：</span>
+          {material.transferScenarioZh}
         </p>
       )}
     </section>
