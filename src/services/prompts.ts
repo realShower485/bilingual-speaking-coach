@@ -170,13 +170,16 @@ export function buildConversationPartnerUserPrompt(p: ConversationPartnerParams)
         ? '第 2 节（展开内容）：必须延续同一单元第 1 节的事实，要求学习者补充原因、细节、例子或回应追问。'
         : '第 3 节（收束回应）：必须延续前两节，要求学习者作回应、总结、感谢、下一步安排或自然结束。';
 
+  // 只把当前三节单元里已完成的内容交给模型，避免新单元被上一单元带偏。
+  const currentUnitTurnCount = completedCount % 3;
+  const currentUnitTurns =
+    currentUnitTurnCount > 0 ? p.recentTurns?.slice(-currentUnitTurnCount) : [];
   const recentText =
-    p.recentTurns && p.recentTurns.length > 0
-      ? p.recentTurns
-          .slice(-3)
+    currentUnitTurns && currentUnitTurns.length > 0
+      ? currentUnitTurns
           .map(
             (t, i) =>
-              `最近第${i + 1}回合 EN: ${t.english} / JA: ${t.japanese}`,
+              `本单元第${i + 1}回合 EN: ${t.english} / JA: ${t.japanese}`,
           )
           .join('\n')
       : '这是新单元的第一回合，无历史。';
