@@ -53,6 +53,7 @@ export interface MaterialGenerationOutput {
   fullJapanese: string;
   expressions: ReusableMaterial['expressions'];
   learnerNotesZh: string;
+  transferScenarioZh: string;
 }
 
 /** 元对话者(meta_dialog)的 JSON 输出 */
@@ -293,6 +294,7 @@ export function buildMaterialGenerationSystemPrompt(): string {
 4. fullEnglish 与 fullJapanese 必须分别是把三节自然连成完整、可直接朗读的版本；不能是反馈、提纲、说明或逐字翻译。
 5. expressions 仅选 3-5 个确实出现在最终稿中的高复用表达；replaceablePart 只写可替换槽位，没有则空字符串。
 6. learnerNotesZh 只写 2-3 条值得复习的中文要点，不重复纠错细节。
+7. transferScenarioZh 给出一个相似但不同的迁移情境：保留沟通目的和难度，替换地点、对象或具体内容；只给中文说明，不要添加到最终稿。
 
 # 输出格式
 严格 JSON，不要 Markdown，不要任何额外文字：
@@ -310,7 +312,8 @@ export function buildMaterialGenerationSystemPrompt(): string {
   "fullEnglish": "...",
   "fullJapanese": "...",
   "expressions": [{"meaningZh":"...","english":"...","japanese":"...","replaceablePart":"..."}],
-  "learnerNotesZh": "..."
+  "learnerNotesZh": "...",
+  "transferScenarioZh": "..."
 }`;
 }
 
