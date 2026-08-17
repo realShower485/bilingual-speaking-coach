@@ -39,6 +39,7 @@ interface SessionRow {
   scenario: string | null;
   started_at: number;
   ended_at: number | null;
+  material_json: string | null;
 }
 
 interface TurnRow {
@@ -189,6 +190,7 @@ async function createSchema(): Promise<void> {
     'auto_japanese_difficulty',
     'INTEGER',
   );
+  await addColumnIfMissing(database, 'sessions', 'material_json', 'TEXT');
   await database.execute(`
     CREATE TABLE IF NOT EXISTS turns (
       id TEXT PRIMARY KEY,
@@ -265,6 +267,16 @@ async function createSchema(): Promise<void> {
  * 则依据旧 difficulty 的语言类型映射(英语等级 → englishDifficulty,日语等级 → japaneseDifficulty,
  * 另一侧用默认值)。
  */
+function parseMaterials(raw: string | null): Session['materials'] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function mapSessionRow(row: SessionRow): Session {
   let englishDifficulty: EnglishDifficulty;
   let japaneseDifficulty: JapaneseDifficulty;
@@ -322,6 +334,7 @@ function mapSessionRow(row: SessionRow): Session {
     autoEnglishDifficulty,
     autoJapaneseDifficulty,
     scenario: row.scenario ?? undefined,
+    materials: parseMaterials(row.material_json),
     turns: [],
     startedAt: row.started_at,
     endedAt: row.ended_at ?? undefined,
@@ -430,8 +443,8 @@ export async function createSession(session: Session): Promise<void> {
     `INSERT INTO sessions
        (id, context_type, difficulty, auto_difficulty,
         english_difficulty, japanese_difficulty, auto_english_difficulty, auto_japanese_difficulty,
-        scenario, started_at, ended_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        scenario, material_json, started_at, ended_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       session.id,
       session.contextType,
@@ -442,6 +455,7 @@ export async function createSession(session: Session): Promise<void> {
       session.autoEnglishDifficulty ? 1 : 0,
       session.autoJapaneseDifficulty ? 1 : 0,
       session.scenario ?? null,
+      session.materials?.length ? JSON.stringify(session.materials) : null,
       session.startedAt,
       session.endedAt ?? null,
     ],
@@ -456,8 +470,8 @@ export async function updateSession(session: Session): Promise<void> {
      SET context_type = $1, difficulty = $2, auto_difficulty = $3,
          english_difficulty = $4, japanese_difficulty = $5,
          auto_english_difficulty = $6, auto_japanese_difficulty = $7,
-         scenario = $8, started_at = $9, ended_at = $10
-     WHERE id = $11`,
+         scenario = $8, material_json = $9, started_at = $10, ended_at = $11
+     WHERE id = $12`,
     [
       session.contextType,
       session.englishDifficulty,
@@ -467,6 +481,7 @@ export async function updateSession(session: Session): Promise<void> {
       session.autoEnglishDifficulty ? 1 : 0,
       session.autoJapaneseDifficulty ? 1 : 0,
       session.scenario ?? null,
+      session.materials?.length ? JSON.stringify(session.materials) : null,
       session.startedAt,
       session.endedAt ?? null,
       session.id,
