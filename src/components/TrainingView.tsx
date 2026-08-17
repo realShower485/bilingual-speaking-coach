@@ -15,6 +15,8 @@ import { PhrasebookPanel } from './PhrasebookPanel';
 import { streamMetaDialog } from '../services/llm';
 import { VaultUnlockDialog } from './VaultUnlockDialog';
 import { OptimalOutcomeArchive } from './OptimalOutcomeArchive';
+import { ReusableMaterialCard } from './ReusableMaterialCard';
+import { buildGptVoiceReviewPackage } from '../services/reviewPackage';
 
 interface Props {
   contextType: ContextType;
@@ -65,6 +67,7 @@ export function TrainingView({
     checkSafeWord,
     checkResume,
     exitSafeMode,
+    createCurrentSessionMaterial,
   } = useTraining();
 
   const languageOrder = useSettingsStore((s) => s.settings.targetLanguageOrder);
@@ -104,6 +107,7 @@ export function TrainingView({
   const [isPostFeedbackReview, setPostFeedbackReview] = useState(false);
   const [showOutcomeArchive, setShowOutcomeArchive] = useState(false);
   const [isVaultUnlockOpen, setVaultUnlockOpen] = useState(false);
+  const [materialCopyState, setMaterialCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   /** 语音模式:识别中状态(STT 进行时)。 */
   const [isTranscribing, setIsTranscribing] = useState(false);
   /** 已朗读过的 feedback id,避免重复朗读。 */
@@ -156,6 +160,7 @@ export function TrainingView({
     setMetaInput('');
     setPostFeedbackReview(false);
     setShowOutcomeArchive(false);
+    setMaterialCopyState('idle');
   };
 
   const startSessionNow = async () => {
@@ -426,6 +431,27 @@ export function TrainingView({
     if (completedReview) setShowOutcomeArchive(true);
   };
 
+  const handleCreateReusableMaterial = async () => {
+    setError(null);
+    try {
+      await createCurrentSessionMaterial();
+      setMaterialCopyState('idle');
+    } catch {
+      /* error 已在 store 中 */
+    }
+  };
+
+  const handleCopyReusableMaterial = async (material: NonNullable<typeof session>['materials'][number]) => {
+    try {
+      if (!navigator.clipboard) throw new Error('当前环境无法访问剪贴板，请手动复制材料。');
+      await navigator.clipboard.writeText(buildGptVoiceReviewPackage(material));
+      setMaterialCopyState('copied');
+    } catch (copyError) {
+      setMaterialCopyState('error');
+      setError((copyError as Error).message || '复制失败，请手动复制材料。');
+    }
+  };
+
   const handleNextTurn = async () => {
     clearLocalState();
     try {
@@ -600,6 +626,17 @@ export function TrainingView({
   // ===== feedback:反馈阶段 =====
 
   if (turnPhase === 'feedback') {
+    const completedTurns = (session?.turns ?? []).filter(
+      (turn) => Boolean(turn.feedback && turn.englishInput.trim() && turn.japaneseInput.trim()),
+    );
+    const latestSourceTurnIds = completedTurns.slice(-3).map((turn) => turn.id);
+    const newestMaterial = session?.materials?.at(-1);
+    const hasCurrentMaterial = Boolean(
+      newestMaterial &&
+        newestMaterial.sourceTurnIds.length === latestSourceTurnIds.length &&
+        newestMaterial.sourceTurnIds.every((id, index) => id === latestSourceTurnIds[index]),
+    );
+
     return (
       <div className="flex-1 overflow-y-auto bg-[var(--bg-primary)] p-4">
         <ErrorBanner />
@@ -663,6 +700,39 @@ export function TrainingView({
                   </button>
                 )}
               </div>
+
+              {completedTurns.length >= 3 && (
+                hasCurrentMaterial && newestMaterial ? (
+                  <ReusableMaterialCard
+                    material={newestMaterial}
+                    onCopy={() => void handleCopyReusableMaterial(newestMaterial)}
+                    copyLabel={
+                      materialCopyState === 'copied'
+                        ? '已复制，可粘贴到 GPT 语音对话'
+                        : materialCopyState === 'error'
+                          ? '复制失败，请重试'
+                          : '复制到 GPT 语音复习'
+                    }
+                  />
+                ) : (
+                  <section className="rounded-lg border border-[var(--accent)] bg-[var(--accent-bg)] p-4">
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                      把最近三回合整理成可复用材料
+                    </h3>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">
+                      AI 会只根据这三回合的内容整理出三节路线、完整英日语稿和高复用表达；若三回合并不属于同一话题，它会明确提示不能合并。
+                    </p>
+                    <button
+                      onClick={() => void handleCreateReusableMaterial()}
+                      disabled={isProcessing}
+                      className="mt-3 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--accent-hover)] disabled:opacity-50"
+                    >
+                      {isProcessing ? '整理中…' : '生成复习材料'}
+                    </button>
+                  </section>
+                )
+              )}
+
               <button
                 onClick={handleNextTurn}
                 disabled={isProcessing}
