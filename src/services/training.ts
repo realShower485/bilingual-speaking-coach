@@ -478,10 +478,22 @@ export async function createCurrentSessionMaterial(): Promise<ReusableMaterial> 
       !output.situationZh?.trim() ||
       !output.fullEnglish?.trim() ||
       !output.fullJapanese?.trim() ||
+      !output.transferScenarioZh?.trim() ||
       !Array.isArray(output.expressions)
     ) {
       throw new Error('材料生成不完整，请重新生成。');
     }
+
+    const actualErrorNotesZh = Array.from(
+      new Map(
+        sourceTurns
+          .flatMap((turn) => turn.feedback?.errorWords ?? [])
+          .map((error) => [
+            `${error.language}:${error.word}`,
+            `${error.language === 'en' ? '英语' : '日语'}「${error.word}」：${error.explanation}`,
+          ]),
+      ).values(),
+    ).slice(0, 3);
 
     const material: ReusableMaterial = {
       id: createId(),
@@ -498,6 +510,8 @@ export async function createCurrentSessionMaterial(): Promise<ReusableMaterial> 
       fullJapanese: output.fullJapanese.trim(),
       expressions: output.expressions.slice(0, 5),
       learnerNotesZh: output.learnerNotesZh.trim(),
+      actualErrorNotesZh,
+      transferScenarioZh: output.transferScenarioZh.trim(),
     };
 
     const updatedSession: Session = {
