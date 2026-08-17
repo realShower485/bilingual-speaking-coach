@@ -5,6 +5,7 @@ import type {
   EnglishDifficulty,
   Feedback,
   JapaneseDifficulty,
+  ReusableMaterial,
   Session,
   Turn,
   TurnPhase,
@@ -73,6 +74,8 @@ export function useTraining() {
 
   const startPostFeedback = useCallback((): void => startPostFeedbackReview(), []);
 
+  const createMaterial = useCallback((): Promise<ReusableMaterial> => createCurrentSessionMaterial(), []);
+
   const endSession = useCallback((): Promise<void> => endCurrentSession(), []);
 
   const checkSafeWord = useCallback(
@@ -105,6 +108,7 @@ export function useTraining() {
     enterMetaDialog: enterMeta,
     exitMetaDialog: exitMeta,
     startPostFeedbackReview: startPostFeedback,
+    createCurrentSessionMaterial: createMaterial,
     endSession,
     checkSafeWord,
     checkResume,
