@@ -3,6 +3,7 @@ import type {
   ContextType,
   EnglishDifficulty,
   JapaneseDifficulty,
+  ReusableMaterial,
 } from '../types';
 import { useTraining } from '../hooks/useTraining';
 import { useVoiceMode } from '../hooks/useVoiceMode';
@@ -441,7 +442,7 @@ export function TrainingView({
     }
   };
 
-  const handleCopyReusableMaterial = async (material: NonNullable<typeof session>['materials'][number]) => {
+  const handleCopyReusableMaterial = async (material: ReusableMaterial) => {
     try {
       if (!navigator.clipboard) throw new Error('当前环境无法访问剪贴板，请手动复制材料。');
       await navigator.clipboard.writeText(buildGptVoiceReviewPackage(material));
@@ -630,7 +631,8 @@ export function TrainingView({
       (turn) => Boolean(turn.feedback && turn.englishInput.trim() && turn.japaneseInput.trim()),
     );
     const latestSourceTurnIds = completedTurns.slice(-3).map((turn) => turn.id);
-    const newestMaterial = session?.materials?.at(-1);
+    const materials = session?.materials ?? [];
+    const newestMaterial = materials[materials.length - 1];
     const hasCurrentMaterial = Boolean(
       newestMaterial &&
         newestMaterial.sourceTurnIds.length === latestSourceTurnIds.length &&
