@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import type { ContextType, ScenarioItem, Session, TopicItem, Turn } from '../types';
 import { useHistory } from '../hooks/useHistory';
 import { OptimalOutcomeArchive } from './OptimalOutcomeArchive';
+import { ReusableMaterialCard } from './ReusableMaterialCard';
 import { LearningStats } from './LearningStats';
 import { getAllScenarios, getAllTopics } from '../services/contextManager';
 import * as db from '../services/db';
@@ -465,6 +466,17 @@ function SessionDetail({
           <div className="rounded-lg border border-[var(--rose)] opacity-40 bg-[var(--rose-light)] px-4 py-3 text-sm text-[var(--rose)]">
             ⚠ {error}
           </div>
+        )}
+
+        {(session.materials?.length ?? 0) > 0 && (
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              本次会话生成的复习材料
+            </h3>
+            {session.materials!.map((material) => (
+              <ReusableMaterialCard key={material.id} material={material} />
+            ))}
+          </section>
         )}
 
         {/* 回合列表 */}
