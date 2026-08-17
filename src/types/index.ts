@@ -81,6 +81,10 @@ export interface ReusableMaterial {
   fullJapanese: string;
   expressions: ReusableMaterialExpression[];
   learnerNotesZh: string;
+  /** 本次三回合中实际出现且值得复习的错误；不会与 AI 参考表达混淆。 */
+  actualErrorNotesZh?: string[];
+  /** 保持相同沟通结构、但换一个安全相似场景的迁移练习建议。 */
+  transferScenarioZh?: string;
 }
 
 // 训练回合
