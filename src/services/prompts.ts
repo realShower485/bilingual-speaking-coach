@@ -5,6 +5,7 @@ import type {
   Feedback,
   JapaneseDifficulty,
   PronunciationTip,
+  ReusableMaterial,
 } from '../types';
 
 // =====================================================================
@@ -38,6 +39,20 @@ export interface EvaluatorOutput {
     language: 'en' | 'ja';
     explanation: string;
   }>;
+}
+
+/** 独立材料生成器输出。只接收连续三回合，不承担纠错职责。 */
+export interface MaterialGenerationOutput {
+  suitable: boolean;
+  unsuitableReasonZh: string;
+  titleZh: string;
+  situationZh: string;
+  form: 'dialogue' | 'narration';
+  sections: Array<Omit<ReusableMaterial['sections'][number], 'index'>>;
+  fullEnglish: string;
+  fullJapanese: string;
+  expressions: ReusableMaterial['expressions'];
+  learnerNotesZh: string;
 }
 
 /** 元对话者(meta_dialog)的 JSON 输出 */
@@ -234,6 +249,71 @@ ${p.japaneseInput}
 当前日语难度等级:${p.japaneseDifficulty}(JLPT)
 
 请按指定 JSON 格式输出。`;
+}
+
+// =====================================================================
+// 独立材料生成器：只负责把三回合整理成可复习材料
+// =====================================================================
+
+export interface MaterialGenerationParams {
+  contextType: ContextType;
+  scenario?: string;
+  englishDifficulty: EnglishDifficulty;
+  japaneseDifficulty: JapaneseDifficulty;
+  turns: Array<{
+    context: string;
+    english: string;
+    japanese: string;
+  }>;
+}
+
+export function buildMaterialGenerationSystemPrompt(): string {
+  return `你是“英日双语口语训练”中的【复习材料编辑】。你只负责将学习者已经完成的连续三段表达编辑为可重复练习的标准双语材料；你不负责逐句纠错、打分或教学。
+
+# 首要原则
+1. 输入必须恰好有三回合。三回合若不能构成同一话题的“进入 → 展开 → 收束”路线，suitable 必须为 false，说明原因，其他文本字段输出空字符串或空数组；绝不强行拼接，更不能编造故事。
+2. suitable 为 true 时，必须忠实保留用户已经表达的关键事实、态度、人物和意图。可以润色自然度、补足必要连接词，但不得加入用户没有表达过的重要经历、观点、承诺、时间、数字或人物。
+3. sections 必须严格有 3 项，顺序对应进入话题、展开内容、回应收束。每项英文只能是英语，日文只能是自然日语。
+4. fullEnglish 与 fullJapanese 必须分别是把三节自然连成完整、可直接朗读的版本；不能是反馈、提纲、说明或逐字翻译。
+5. expressions 仅选 3-5 个确实出现在最终稿中的高复用表达；replaceablePart 只写可替换槽位，没有则空字符串。
+6. learnerNotesZh 只写 2-3 条值得复习的中文要点，不重复纠错细节。
+
+# 输出格式
+严格 JSON，不要 Markdown，不要任何额外文字：
+{
+  "suitable": true,
+  "unsuitableReasonZh": "",
+  "titleZh": "...",
+  "situationZh": "...",
+  "form": "dialogue",
+  "sections": [
+    {"titleZh":"...","purposeZh":"...","chineseRoute":"...","english":"...","japanese":"..."},
+    {"titleZh":"...","purposeZh":"...","chineseRoute":"...","english":"...","japanese":"..."},
+    {"titleZh":"...","purposeZh":"...","chineseRoute":"...","english":"...","japanese":"..."}
+  ],
+  "fullEnglish": "...",
+  "fullJapanese": "...",
+  "expressions": [{"meaningZh":"...","english":"...","japanese":"...","replaceablePart":"..."}],
+  "learnerNotesZh": "..."
+}`;
+}
+
+export function buildMaterialGenerationUserPrompt(p: MaterialGenerationParams): string {
+  const turns = p.turns.map((turn, index) => `第${index + 1}回合
+情境：${turn.context}
+学习者英语：${turn.english}
+学习者日语：${turn.japanese}`).join('\n\n');
+
+  return `请把以下三回合整理为可直接用于语音复习的双语材料。
+
+训练类型：${p.contextType}
+选择的场景或话题：${p.scenario ?? '未指定'}
+英语难度：${p.englishDifficulty}
+日语难度：${p.japaneseDifficulty}
+
+${turns}
+
+先判断三回合是否真的连续、能否忠实整理；然后按 JSON 格式输出。`;
 }
 
 // =====================================================================
