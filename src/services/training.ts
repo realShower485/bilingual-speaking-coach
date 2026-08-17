@@ -5,6 +5,7 @@ import type {
   JapaneseDifficulty,
   Session,
   Turn,
+  ReusableMaterial,
   TurnPhase,
 } from '../types';
 import { useSessionStore } from '../store/sessionStore';
@@ -14,6 +15,7 @@ import {
   adjustDifficulty,
   evaluateTurn,
   generateContext,
+  generateReusableMaterial,
   metaDialog,
 } from './llm';
 import type { MetaDialogOutput } from './prompts';
@@ -419,6 +421,85 @@ export function startPostFeedbackReview(): void {
     throw new Error('请先完成本回合的双语表达并查看反馈，再进入复盘问答。');
   }
   store.enterMetaDialog();
+}
+
+// =====================================================================
+// 生成三节复习材料
+// =====================================================================
+
+/**
+ * 将最近连续完成的三回合另行整理为复习材料。
+ * 评估与材料生成分两次调用，避免反馈字段挤占长材料质量。
+ */
+export async function createCurrentSessionMaterial(): Promise<ReusableMaterial> {
+  const store = getStore();
+  const session = requireCurrentSession();
+  const completed = session.turns.filter(
+    (turn) => Boolean(turn.feedback) && Boolean(turn.englishInput.trim()) && Boolean(turn.japaneseInput.trim()),
+  );
+  if (completed.length < 3) {
+    throw new Error('完成至少三回合双语表达后，才能整理成连续复习材料。');
+  }
+
+  const sourceTurns = completed.slice(-3);
+  store.setError(null);
+  store.setProcessing(true);
+  try {
+    const output = await generateReusableMaterial({
+      contextType: session.contextType,
+      scenario: session.scenario,
+      englishDifficulty: session.englishDifficulty,
+      japaneseDifficulty: session.japaneseDifficulty,
+      turns: sourceTurns.map((turn) => ({
+        context: turn.contextGiven,
+        english: turn.englishInput,
+        japanese: turn.japaneseInput,
+      })),
+    });
+
+    if (!output.suitable) {
+      throw new Error(
+        output.unsuitableReasonZh || '最近三回合不是同一条连续话题，无法忠实整理成复习材料。',
+      );
+    }
+    if (output.sections.length !== 3 || !output.fullEnglish.trim() || !output.fullJapanese.trim()) {
+      throw new Error('材料生成不完整，请重新生成。');
+    }
+
+    const material: ReusableMaterial = {
+      id: createId(),
+      createdAt: Date.now(),
+      sourceTurnIds: sourceTurns.map((turn) => turn.id),
+      titleZh: output.titleZh.trim(),
+      situationZh: output.situationZh.trim(),
+      form: output.form === 'narration' ? 'narration' : 'dialogue',
+      sections: output.sections.map((section, index) => ({
+        ...section,
+        index: (index + 1) as 1 | 2 | 3,
+      })),
+      fullEnglish: output.fullEnglish.trim(),
+      fullJapanese: output.fullJapanese.trim(),
+      expressions: output.expressions.slice(0, 5),
+      learnerNotesZh: output.learnerNotesZh.trim(),
+    };
+
+    const updatedSession: Session = {
+      ...session,
+      materials: [...(session.materials ?? []), material],
+    };
+    store.setSession(updatedSession);
+    try {
+      await db.updateSession(updatedSession);
+    } catch (e) {
+      console.error('[training] 复习材料持久化失败(不阻塞):', e);
+    }
+    return material;
+  } catch (e) {
+    store.setError((e as Error).message);
+    throw e;
+  } finally {
+    store.setProcessing(false);
+  }
 }
 
 // =====================================================================
