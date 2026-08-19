@@ -32,3 +32,15 @@ Thumbs.db
 
 # PowerShell script (contains local paths)
 创建桌面快捷方式.ps1
+
+# Local secrets and personal data (never commit)
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.hold
+*.stronghold
